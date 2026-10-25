@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Model Evaluation & Diagnostics | Student Performance ML Studio{% endblock %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+  <div class="col-md-8">
+    <h2 class="mb-1">Machine Learning Model Evaluation</h2>
+    <p class="text-muted mb-0">
+      Rigorous empirical benchmark of candidate regression pipelines, risk classification models, and predictive feature importances.
+    </p>
+  </div>
+  <div class="col-md-4 text-md-end mt-3 mt-md-0">
+    <span class="badge bg-light text-dark border p-2">
+      <i class="bi bi-clock-history me-1 text-teal"></i>
+      Last Trained: <strong>{{ (metrics.timestamp[:19] if metrics and metrics.timestamp else 'Recent') }} UTC</strong>
+    </span>
+  </div>
+</div>
+
+<!-- Regression Model Benchmark Table -->
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+    <h5 class="mb-0 fw-bold">
+      <i class="bi bi-bar-chart text-teal me-2"></i>Regression Candidate Benchmark (Target: G3 Final Grade)
+    </h5>
+    <span class="badge bg-success-subtle text-success border border-success-subtle">
+      Selected: {{ metrics.regression.selected_model if metrics and metrics.regression else 'RandomForestRegressor' }}
+    </span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-custom table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Algorithm Candidate</th>
+            <th>5-Fold CV RMSE</th>
+            <th>5-Fold CV MAE</th>
+            <th>Test Set MAE</th>
+            <th>Test Set RMSE</th>
+            <th>Test Set R&sup2;</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if metrics and metrics.regression and metrics.regression.candidates %}
+            {% for name, vals in metrics.regression.candidates.items() %}
+            <tr class="{% if name == metrics.regression.selected_model %}table-teal-subtle fw-semibold{% endif %}">
+              <td>
+                <span class="text-dark">{{ name }}</span>
+                {% if name == metrics.regression.selected_model %}
+                  <span class="badge bg-teal ms-1 text-white">Active Pipeline</span>
+                {% endif %}
+              </td>
+              <td>{{ vals.cv_rmse }}</td>
+              <td>{{ vals.cv_mae }}</td>
+              <td class="text-success">{{ vals.test_mae }}</td>
+              <td class="text-primary">{{ vals.test_rmse }}</td>
+              <td>
+                <span class="badge {% if vals.test_r2 > 0.15 %}bg-success{% elif vals.test_r2 > 0 %}bg-info{% else %}bg-secondary{% endif %}">
+                  {{ vals.test_r2 }}
+                </span>
+              </td>
+              <td>
+                {% if name == metrics.regression.selected_model %}
+                  <span class="badge bg-success"><i class="bi bi-check2-circle"></i> Selected</span>
+                {% else %}
+                  <span class="badge bg-light text-muted border">Evaluated</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="7" class="text-center text-muted py-3">Metrics not found. Run 'python -m src.ml.train' to compute.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card-footer bg-light text-muted small">
+    Cross-validation performed exclusively on training partition (80%). Test evaluation performed on hold-out partition (20%).
+  </div>
+</div>
+
+<!-- Academic Risk Classification Benchmark & Confusion Matrix -->
+<div class="row g-4 mb-4">
+  <!-- Classifier Comparison Table (Col 6) -->
+  <div class="col-lg-6">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-header bg-white py-3">
+        <h5 class="mb-0 fw-bold">
+          <i class="bi bi-diagram-3 text-teal me-2"></i>Academic Risk Classifier Benchmark
+        </h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-custom table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Classifier Algorithm</th>
+                <th>Test Accuracy</th>
+                <th>Macro F1</th>
+                <th>Weighted F1</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if metrics and metrics.classification and metrics.classification.candidates %}
+                {% for name, vals in metrics.classification.candidates.items() %}
+                <tr class="{% if name == metrics.classification.selected_model %}table-teal-subtle fw-semibold{% endif %}">
+                  <td>{{ name }}</td>
+                  <td>{{ (vals.accuracy * 100)|round(1) }}%</td>
+                  <td><strong>{{ vals.f1_macro }}</strong></td>
+                  <td>{{ vals.f1_weighted }}</td>
+                </tr>
+                {% endfor %}
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card-footer bg-light text-muted small">
+        Addresses class imbalance using cost-sensitive balanced weighting across risk categories.
+      </div>
+    </div>
+  </div>
+
+  <!-- Confusion Matrix Display (Col 6) -->
+  <div class="col-lg-6">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-header bg-white py-3">
+        <h5 class="mb-0 fw-bold">
+          <i class="bi bi-grid-3x3 text-teal me-2"></i>Hold-Out Test Confusion Matrix
+        </h5>
+      </div>
+      <div class="card-body d-flex flex-column align-items-center justify-content-center">
+        {% if metrics and metrics.classification and metrics.classification.best_model_test_metrics and metrics.classification.best_model_test_metrics.confusion_matrix %}
+          <div class="table-responsive w-100">
+            <table class="table table-bordered text-center align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th rowspan="2" class="align-middle">Actual \ Predicted</th>
+                  {% for lbl in metrics.classification.best_model_test_metrics.labels %}
+                    <th class="small">{{ lbl.replace(' Academic Risk', '') }}</th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in metrics.classification.best_model_test_metrics.confusion_matrix %}
+                  {% set outer_loop = loop %}
+                  <tr>
+                    <th class="table-light small">{{ metrics.classification.best_model_test_metrics.labels[outer_loop.index0].replace(' Academic Risk', '') }}</th>
+                    {% for count in row %}
+                      <td class="{% if loop.index0 == outer_loop.index0 %}bg-success-subtle fw-bold text-success{% else %}text-muted{% endif %}">
+                        {{ count }}
+                      </td>
+                    {% endfor %}
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-3 text-muted small text-center">
+            Diagonal cells represent correct classifications on the 79-student hold-out test set.
+          </div>
+        {% else %}
+          <p class="text-muted">Confusion matrix data unavailable.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Feature Importance & Methodological Rigor -->
+<div class="row g-4 mb-4">
+  <!-- Feature Importance Chart (Col 7) -->
+  <div class="col-lg-7">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-header bg-white py-3">
+        <h5 class="mb-0 fw-bold">
+          <i class="bi bi-stars text-teal me-2"></i>Key Predictive Feature Importances
+        </h5>
+      </div>
+      <div class="card-body">
+        <canvas id="importanceChart" style="max-height: 320px;"></canvas>
+      </div>
+      <div class="card-footer bg-light text-muted small">
+        Extracted directly from the scikit-learn RandomForestRegressor pipeline.
+      </div>
+    </div>
+  </div>
+
+  <!-- Methodology & Limitations Card (Col 5) -->
+  <div class="col-lg-5">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-header bg-white py-3">
+        <h5 class="mb-0 fw-bold">
+          <i class="bi bi-shield-check text-primary me-2"></i>Methodology &amp; Ethical Limitations
+        </h5>
+      </div>
+      <div class="card-body text-muted small">
+        <h6 class="fw-bold text-dark mb-1">Early-Warning Feature Isolation</h6>
+        <p class="mb-3">
+          To build a genuine early-warning system, <strong>G1 (First Period)</strong> and <strong>G2 (Second Period)</strong> grades were excluded from model input features. This prevents circular data leakage and tests true baseline predictive capability from socio-academic indicators.
+        </p>
+
+        <h6 class="fw-bold text-dark mb-1">Model Limitations</h6>
+        <p class="mb-3">
+          The dataset comprises 395 students from two Portuguese secondary schools. Findings reflect this specific cohort and should not be generalized across disparate educational cultures without recalibration.
+        </p>
+
+        <h6 class="fw-bold text-dark mb-1">Human-in-the-Loop Governance</h6>
+        <p class="mb-0">
+          Predictions are decision-support aids for mentors and educators, not deterministic student evaluations. High-stakes academic actions require comprehensive human assessment.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // Extract feature importances passed from server
+  {% if metrics and metrics.regression and metrics.regression.feature_importance %}
+    const fiData = {{ metrics.regression.feature_importance | tojson }};
+    const labels = fiData.map(d => d.feature);
+    const values = fiData.map(d => d.importance);
+
+    const ctx = document.getElementById("importanceChart").getContext("2d");
+    new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "Relative Importance",
+          data: values,
+          backgroundColor: "rgba(13, 148, 136, 0.75)",
+          borderColor: "#0d9488",
+          borderWidth: 1,
+          borderRadius: 4
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) { return "Importance: " + ctx.raw; }
+            }
+          }
+        },
+        scales: {
+          x: { beginAtZero: true, title: { display: true, text: "Gini Impurity Importance" } }
+        }
+      }
+    });
+  {% endif %}
+});
+</script>
+{% endblock %}

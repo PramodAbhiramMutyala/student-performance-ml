@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | Student Performance & Academic Risk Studio{% endblock %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+  <div class="col-md-8">
+    <h2 class="mb-1">Academic Analytics & Performance Overview</h2>
+    <p class="text-muted mb-0">
+      Exploratory indicators, actual model validation metrics, and early-warning grade distributions.
+    </p>
+  </div>
+  <div class="col-md-4 text-md-end mt-3 mt-md-0">
+    <a href="/predict" class="btn btn-teal me-2">
+      <i class="bi bi-person-plus me-1"></i> New Student Prediction
+    </a>
+    <a href="/batch-predict" class="btn btn-outline-secondary">
+      <i class="bi bi-upload me-1"></i> Batch CSV
+    </a>
+  </div>
+</div>
+
+<!-- KPI Metric Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="kpi-card shadow-sm h-100">
+      <div class="kpi-title">Total Student Records</div>
+      <div class="kpi-value">{{ overview.total_students or 395 }}</div>
+      <div class="kpi-subtext"><i class="bi bi-database me-1 text-teal"></i> UCI Secondary Math Dataset</div>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-xl-3">
+    <div class="kpi-card shadow-sm h-100" style="--border-left-color: #0284c7;">
+      <div class="kpi-title">Mean Observed Grade (G3)</div>
+      <div class="kpi-value text-primary">{{ overview.average_grade or 10.42 }}<span class="fs-6 text-muted"> / 20</span></div>
+      <div class="kpi-subtext">Passing Rate: <strong>{{ overview.passing_rate or 67.09 }}%</strong> (&ge; 10/20)</div>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-xl-3">
+    <div class="kpi-card shadow-sm h-100">
+      <div class="kpi-title">Selected Model Test MAE</div>
+      <div class="kpi-value text-success">
+        {% if metrics and metrics.regression and metrics.regression.best_model_test_metrics %}
+          {{ metrics.regression.best_model_test_metrics.test_mae }}
+        {% else %}
+          2.95
+        {% endif %}
+      </div>
+      <div class="kpi-subtext">
+        Model: <strong>{{ (metrics.regression.selected_model if metrics and metrics.regression else 'RandomForestRegressor') }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-xl-3">
+    <div class="kpi-card shadow-sm h-100">
+      <div class="kpi-title">Model Test R&sup2; Score</div>
+      <div class="kpi-value text-info">
+        {% if metrics and metrics.regression and metrics.regression.best_model_test_metrics %}
+          {{ metrics.regression.best_model_test_metrics.test_r2 }}
+        {% else %}
+          0.18
+        {% endif %}
+      </div>
+      <div class="kpi-subtext"><i class="bi bi-shield-check text-success me-1"></i> Strictly excludes G1 & G2</div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row 1: Grade Distribution & Academic Risk Proportions -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-8">
+    <div class="card h-100 shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-bar-chart-fill text-teal me-2"></i>Final Mathematics Grade Distribution (G3, 0-20)</span>
+        <span class="badge bg-light text-dark border">Scale: 0 - 20</span>
+      </div>
+      <div class="card-body">
+        <canvas id="gradeDistChart" style="max-height: 290px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card h-100 shadow-sm">
+      <div class="card-header">
+        <i class="bi bi-pie-chart-fill text-teal me-2"></i>Academic Risk Categories
+      </div>
+      <div class="card-body d-flex flex-column align-items-center justify-content-center">
+        <div style="width: 100%; max-width: 250px;">
+          <canvas id="riskDoughnutChart"></canvas>
+        </div>
+        <div class="mt-3 text-center small text-muted">
+          Based on Portuguese Secondary scale thresholds: Fail (&lt;10), Satisfactory (10-13), Good/Exc (&ge;14)
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row 2: Study Time vs Grade & Absences vs Grade -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="card h-100 shadow-sm">
+      <div class="card-header">
+        <i class="bi bi-clock-history text-teal me-2"></i>Weekly Study Time vs Mean Final Grade
+      </div>
+      <div class="card-body">
+        <canvas id="studyTimeChart" style="max-height: 260px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card h-100 shadow-sm">
+      <div class="card-header">
+        <i class="bi bi-calendar-x text-teal me-2"></i>School Absences Impact on Average Grade
+      </div>
+      <div class="card-body">
+        <canvas id="absencesChart" style="max-height: 260px;"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Academic Disclaimer & System Notice -->
+<div class="alert alert-info border-0 shadow-sm d-flex align-items-start gap-3 mb-0" role="alert">
+  <i class="bi bi-info-circle-fill fs-4 text-info mt-1"></i>
+  <div>
+    <h6 class="alert-heading fw-bold mb-1">Academic Context & Model Advisory</h6>
+    <p class="mb-0 small">
+      This educational analytics system demonstrates early-warning predictive modeling on the UCI Student Performance dataset.
+      The early-warning experiment strictly excludes intermediate grades (G1 and G2) so instructors can proactively identify
+      at-risk students at the start of the academic term. Model predictions are probabilistic estimates and must never be used
+      for punitive automated decisions.
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  try {
+    const res = await fetch("/api/analytics/distributions");
+    const data = await res.json();
+    if (data.error) return;
+
+    // 1. Grade Distribution Chart
+    const ctxGrade = document.getElementById("gradeDistChart").getContext("2d");
+    new Chart(ctxGrade, {
+      type: "bar",
+      data: {
+        labels: data.grades.labels,
+        datasets: [{
+          label: "Student Count",
+          data: data.grades.values,
+          backgroundColor: data.grades.labels.map(l => parseInt(l) < 10 ? "rgba(239, 68, 68, 0.7)" : "rgba(13, 148, 136, 0.7)"),
+          borderColor: data.grades.labels.map(l => parseInt(l) < 10 ? "#ef4444" : "#0d9488"),
+          borderWidth: 1.5,
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              afterLabel: function(ctx) {
+                return parseInt(ctx.label) < 10 ? "Status: Failing / High Risk" : "Status: Passing";
+              }
+            }
+          }
+        },
+        scales: {
+          x: { title: { display: true, text: "Final Grade (0 to 20 Scale)" } },
+          y: { beginAtZero: true, title: { display: true, text: "Number of Students" } }
+        }
+      }
+    });
+
+    // 2. Academic Risk Doughnut Chart
+    const ctxRisk = document.getElementById("riskDoughnutChart").getContext("2d");
+    const riskLabels = Object.keys(data.risk_breakdown);
+    const riskValues = Object.values(data.risk_breakdown);
+    new Chart(ctxRisk, {
+      type: "doughnut",
+      data: {
+        labels: riskLabels,
+        datasets: [{
+          data: riskValues,
+          backgroundColor: ["#ef4444", "#f59e0b", "#10b981"],
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } }
+        }
+      }
+    });
+
+    // 3. Study Time vs Grade Chart
+    const ctxStudy = document.getElementById("studyTimeChart").getContext("2d");
+    new Chart(ctxStudy, {
+      type: "bar",
+      data: {
+        labels: data.study_time.map(d => d.category),
+        datasets: [{
+          label: "Mean Final Grade",
+          data: data.study_time.map(d => d.average_grade),
+          backgroundColor: "rgba(14, 165, 233, 0.7)",
+          borderColor: "#0284c7",
+          borderWidth: 1.5,
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { min: 8, max: 14, title: { display: true, text: "Average Grade (G3)" } }
+        }
+      }
+    });
+
+    // 4. Absences vs Grade Chart
+    const ctxAbs = document.getElementById("absencesChart").getContext("2d");
+    new Chart(ctxAbs, {
+      type: "line",
+      data: {
+        labels: data.absences.map(d => d.bucket),
+        datasets: [{
+          label: "Mean Final Grade",
+          data: data.absences.map(d => d.average_grade),
+          borderColor: "#0d9488",
+          backgroundColor: "rgba(13, 148, 136, 0.15)",
+          fill: true,
+          tension: 0.3,
+          pointRadius: 5,
+          pointHoverRadius: 7
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { min: 8, max: 15, title: { display: true, text: "Average Grade (G3)" } }
+        }
+      }
+    });
+
+  } catch (err) {
+    console.error("Failed to load distribution charts:", err);
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+
+{% block title %}Explore Dataset | Student Performance ML Studio{% endblock %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+  <div class="col-md-8">
+    <h2 class="mb-1">Explore Student Performance Dataset</h2>
+    <p class="text-muted mb-0">
+      Browse raw records, inspect variable dictionaries, and validate external CSV datasets against schema specifications.
+    </p>
+  </div>
+  <div class="col-md-4 text-md-end mt-3 mt-md-0">
+    <button class="btn btn-teal" data-bs-toggle="modal" data-bs-target="#csvValidatorModal">
+      <i class="bi bi-shield-check me-1"></i> Test CSV Validation
+    </button>
+  </div>
+</div>
+
+<!-- Dataset Summary Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card p-3 shadow-sm h-100">
+      <div class="text-muted small fw-semibold text-uppercase">Corpus Source</div>
+      <div class="h5 mb-1 mt-1 text-primary">UCI Repository</div>
+      <div class="small text-muted">Cortez & Silva (2008)</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3 shadow-sm h-100">
+      <div class="text-muted small fw-semibold text-uppercase">Total Observations</div>
+      <div class="h5 mb-1 mt-1 text-dark">{{ overview.total_students or 395 }} Students</div>
+      <div class="small text-muted">Secondary mathematics course</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3 shadow-sm h-100">
+      <div class="text-muted small fw-semibold text-uppercase">Early-Warning Features</div>
+      <div class="h5 mb-1 mt-1 text-teal">30 Indicators</div>
+      <div class="small text-muted">Demographic, social, habits</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3 shadow-sm h-100">
+      <div class="text-muted small fw-semibold text-uppercase">Missing Values</div>
+      <div class="h5 mb-1 mt-1 text-success">0 Null Values</div>
+      <div class="small text-muted">100% verified dataset integrity</div>
+    </div>
+  </div>
+</div>
+
+<!-- Interactive Dataset Browser -->
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <h5 class="mb-0">
+      <i class="bi bi-table text-teal me-2"></i>Dataset Sample Browser
+    </h5>
+    <div class="d-flex align-items-center gap-2">
+      <input type="text" id="tableSearch" class="form-control form-control-sm" placeholder="Search table..." style="width: 200px;">
+      <select id="schoolFilter" class="form-select form-select-sm" style="width: 140px;">
+        <option value="">All Schools</option>
+        <option value="GP">GP (Gabriel Pereira)</option>
+        <option value="MS">MS (Mousinho)</option>
+      </select>
+      <select id="sexFilter" class="form-select form-select-sm" style="width: 120px;">
+        <option value="">All Genders</option>
+        <option value="F">Female</option>
+        <option value="M">Male</option>
+      </select>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive" style="max-height: 460px; overflow-y: auto;">
+      <table class="table table-custom table-hover mb-0" id="datasetTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>School</th>
+            <th>Sex</th>
+            <th>Age</th>
+            <th>Address</th>
+            <th>Family</th>
+            <th>M.Edu</th>
+            <th>F.Edu</th>
+            <th>Study Time</th>
+            <th>Failures</th>
+            <th>Internet</th>
+            <th>Absences</th>
+            <th class="table-info">G1</th>
+            <th class="table-info">G2</th>
+            <th class="table-primary">G3 (Target)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in dataset_sample %}
+          <tr>
+            <td class="text-muted">{{ loop.index }}</td>
+            <td><span class="badge bg-light text-dark border">{{ row.school }}</span></td>
+            <td>{{ row.sex }}</td>
+            <td>{{ row.age }}</td>
+            <td>{{ row.address }}</td>
+            <td>{{ row.famsize }}</td>
+            <td>{{ row.Medu }}</td>
+            <td>{{ row.Fedu }}</td>
+            <td>{{ row.studytime }}</td>
+            <td>
+              {% if row.failures > 0 %}
+                <span class="badge bg-danger-subtle text-danger">{{ row.failures }}</span>
+              {% else %}
+                <span class="badge bg-light text-muted">0</span>
+              {% endif %}
+            </td>
+            <td>{{ row.internet }}</td>
+            <td>{{ row.absences }}</td>
+            <td class="table-info fw-semibold">{{ row.G1 }}</td>
+            <td class="table-info fw-semibold">{{ row.G2 }}</td>
+            <td class="table-primary fw-bold text-dark">{{ row.G3 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card-footer bg-light text-muted small d-flex justify-content-between align-items-center">
+    <span>Displaying first 50 records for interactive inspection. Full dataset contains 395 rows.</span>
+    <span>Target: <strong>G3</strong> (0 to 20 scale)</span>
+  </div>
+</div>
+
+<!-- Dataset Schema & Variable Definitions Accordion -->
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-white">
+    <h5 class="mb-0"><i class="bi bi-info-circle text-teal me-2"></i>Dataset Schema & Variable Dictionary</h5>
+  </div>
+  <div class="card-body">
+    <div class="row g-4">
+      <div class="col-md-4">
+        <h6 class="fw-bold text-primary mb-2">Demographic & Background</h6>
+        <ul class="list-unstyled small text-muted mb-0">
+          <li><code>school</code>: GP (Gabriel Pereira), MS (Mousinho da Silveira)</li>
+          <li><code>sex</code>: Student sex (F: female, M: male)</li>
+          <li><code>age</code>: Student age (15 to 22)</li>
+          <li><code>address</code>: Home address type (U: urban, R: rural)</li>
+          <li><code>famsize</code>: Family size (LE3: &le;3, GT3: &gt;3)</li>
+          <li><code>Pstatus</code>: Cohabitation status (T: together, A: apart)</li>
+          <li><code>Medu / Fedu</code>: Parent education level (0 to 4)</li>
+          <li><code>Mjob / Fjob</code>: Parent occupation category</li>
+        </ul>
+      </div>
+      <div class="col-md-4">
+        <h6 class="fw-bold text-teal mb-2">Academic & School Environment</h6>
+        <ul class="list-unstyled small text-muted mb-0">
+          <li><code>traveltime</code>: Travel time (1: &lt;15m, 2: 15-30m, 3: 30-60m, 4: &gt;1h)</li>
+          <li><code>studytime</code>: Weekly study time (1: &lt;2h, 2: 2-5h, 3: 5-10h, 4: &gt;10h)</li>
+          <li><code>failures</code>: Past class failures (0 to 4)</li>
+          <li><code>schoolsup</code>: Extra educational school support (yes/no)</li>
+          <li><code>famsup</code>: Family educational support (yes/no)</li>
+          <li><code>paid</code>: Extra paid classes within math (yes/no)</li>
+          <li><code>higher</code>: Desires higher education (yes/no)</li>
+          <li><code>internet</code>: Internet access at home (yes/no)</li>
+        </ul>
+      </div>
+      <div class="col-md-4">
+        <h6 class="fw-bold text-dark mb-2">Social, Health & Targets</h6>
+        <ul class="list-unstyled small text-muted mb-0">
+          <li><code>famrel</code>: Family relationships quality (1 to 5)</li>
+          <li><code>freetime</code>: Free time after school (1 to 5)</li>
+          <li><code>goout</code>: Going out with peers (1 to 5)</li>
+          <li><code>Dalc / Walc</code>: Workday / Weekend alcohol use (1 to 5)</li>
+          <li><code>health</code>: Current health status (1 to 5)</li>
+          <li><code>absences</code>: Number of school absences (0 to 93)</li>
+          <li class="text-danger fw-semibold"><code>G1, G2</code>: Excluded from early-warning features</li>
+          <li class="text-primary fw-bold"><code>G3</code>: Final math grade target (0 to 20)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: CSV Schema Validation Tester -->
+<div class="modal fade" id="csvValidatorModal" tabindex="-1" aria-labelledby="csvValidatorModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="csvValidatorModalLabel"><i class="bi bi-shield-check text-teal me-2"></i>Validate CSV Dataset</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small">
+          Upload any student dataset CSV to verify required columns, data types, category domains, and numerical bounds without running predictions.
+        </p>
+        <div class="mb-3">
+          <label for="validationFileInput" class="form-label fw-bold">Select CSV File</label>
+          <input class="form-control" type="file" id="validationFileInput" accept=".csv">
+        </div>
+        <div id="validationSpinner" class="spinner-container">
+          <div class="spinner-border text-teal" role="status"></div>
+          <span>Validating dataset schema...</span>
+        </div>
+        <div id="validationResultCard" class="d-none mt-3">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-teal" id="runValidationBtn">Run Validation</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // Table search and filtering
+  const searchInput = document.getElementById("tableSearch");
+  const schoolFilter = document.getElementById("schoolFilter");
+  const sexFilter = document.getElementById("sexFilter");
+  const tableRows = document.querySelectorAll("#datasetTable tbody tr");
+
+  function filterTable() {
+    const query = searchInput.value.toLowerCase();
+    const schoolVal = schoolFilter.value;
+    const sexVal = sexFilter.value;
+
+    tableRows.forEach(row => {
+      const text = row.innerText.toLowerCase();
+      const schoolCell = row.cells[1].innerText.trim();
+      const sexCell = row.cells[2].innerText.trim();
+
+      const matchesSearch = text.includes(query);
+      const matchesSchool = !schoolVal || schoolCell === schoolVal;
+      const matchesSex = !sexVal || sexCell === sexVal;
+
+      if (matchesSearch && matchesSchool && matchesSex) {
+        row.style.display = "";
+      } else {
+        row.style.display = "none";
+      }
+    });
+  }
+
+  searchInput.addEventListener("input", filterTable);
+  schoolFilter.addEventListener("change", filterTable);
+  sexFilter.addEventListener("change", filterTable);
+
+  // CSV Validation modal handler
+  const fileInput = document.getElementById("validationFileInput");
+  const runBtn = document.getElementById("runValidationBtn");
+  const spinner = document.getElementById("validationSpinner");
+  const resultCard = document.getElementById("validationResultCard");
+
+  runBtn.addEventListener("click", async () => {
+    if (!fileInput.files || fileInput.files.length === 0) {
+      showToast("Please select a CSV file first.", "warning");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+
+    spinner.style.display = "flex";
+    resultCard.classList.add("d-none");
+
+    try {
+      const res = await fetch("/api/dataset/validate", {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      spinner.style.display = "none";
+      resultCard.classList.remove("d-none");
+
+      if (!res.ok) {
+        resultCard.innerHTML = `
+          <div class="alert alert-danger mb-0">
+            <strong>Error (${res.status}):</strong> ${data.detail || "Validation request failed."}
+          </div>
+        `;
+        return;
+      }
+
+      let statusBadge = data.is_valid
+        ? '<span class="badge bg-success"><i class="bi bi-check-circle"></i> Valid Schema</span>'
+        : '<span class="badge bg-danger"><i class="bi bi-x-circle"></i> Schema Violations Found</span>';
+
+      let errorsList = (data.errors && data.errors.length)
+        ? `<div class="mt-2 text-danger"><strong>Errors (${data.errors.length}):</strong><ul class="mb-0 small">${data.errors.map(e => `<li>${e}</li>`).join("")}</ul></div>`
+        : '';
+
+      let warningsList = (data.warnings && data.warnings.length)
+        ? `<div class="mt-2 text-warning"><strong>Warnings (${data.warnings.length}):</strong><ul class="mb-0 small">${data.warnings.map(w => `<li>${w}</li>`).join("")}</ul></div>`
+        : '';
+
+      resultCard.innerHTML = `
+        <div class="card p-3 border ${data.is_valid ? 'border-success' : 'border-danger'} bg-light">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0 fw-bold">Validation Outcome</h6>
+            ${statusBadge}
+          </div>
+          <div class="row g-2 small text-muted">
+            <div class="col-6">Total Rows: <strong>${data.total_rows}</strong></div>
+            <div class="col-6">Total Columns: <strong>${data.total_columns}</strong></div>
+            <div class="col-6">Missing Values: <strong>${data.missing_values_count}</strong></div>
+            <div class="col-6">Duplicate Rows: <strong>${data.duplicate_rows_count}</strong></div>
+          </div>
+          ${errorsList}
+          ${warningsList}
+        </div>
+      `;
+    } catch (err) {
+      spinner.style.display = "none";
+      resultCard.classList.remove("d-none");
+      resultCard.innerHTML = `<div class="alert alert-danger mb-0">Network error: ${err.message}</div>`;
+    }
+  });
+});
+</script>
+{% endblock %}

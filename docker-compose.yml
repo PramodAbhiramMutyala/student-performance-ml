@@ -1,0 +1,16 @@
+services:
+  web:
+    build: .
+    container_name: student-performance-ml
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - DEBUG=False
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DATABASE_URL=sqlite:///./data/predictions.db
+    volumes:
+      - ./data:/app/data
+      - ./artifacts:/app/artifacts
+    restart: unless-stopped

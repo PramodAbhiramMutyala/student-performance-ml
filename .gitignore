@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment & Secrets
+.env
+.env.local
+*.pem
+*.key
+
+# Local SQLite databases (data logs should not be checked in)
+*.db
+*.sqlite3
+data/*.db
+data/*.sqlite3
+
+# Raw datasets (acquired locally via scripts/download_dataset.py)
+data/raw/*.csv
+data/raw/*.txt
+data/raw/*.zip
+
+# Model artifacts (binary serialized weights/pipelines can be regenerated via `python -m src.ml.train`)
+# We keep directory structure via README.md or .gitkeep
+artifacts/models/*.joblib
+!artifacts/models/.gitkeep
+!artifacts/eda/.gitkeep
+!data/raw/.gitkeep
+!data/processed/.gitkeep

@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+
+{% block title %}Batch Prediction | Student Performance ML Studio{% endblock %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+  <div class="col-md-8">
+    <h2 class="mb-1">Batch Performance Prediction</h2>
+    <p class="text-muted mb-0">
+      Upload student CSV files for automated bulk inference, row-level validation auditing, and downloadable result exports.
+    </p>
+  </div>
+  <div class="col-md-4 text-md-end mt-3 mt-md-0">
+    <button class="btn btn-outline-secondary btn-sm" onclick="downloadSampleTemplate()">
+      <i class="bi bi-file-earmark-arrow-down me-1"></i> Download Sample CSV Template
+    </button>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Upload Section (Col 5) -->
+  <div class="col-lg-5">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-white py-3">
+        <h5 class="mb-0 fw-bold"><i class="bi bi-cloud-arrow-up text-teal me-2"></i>Upload Dataset CSV</h5>
+      </div>
+      <div class="card-body p-4">
+        <div class="drag-drop-area mb-3" id="dropZone">
+          <i class="bi bi-filetype-csv text-teal display-4 mb-2 d-block"></i>
+          <h6 class="fw-bold mb-1">Drag and drop student CSV file here</h6>
+          <p class="text-muted small mb-3">Supports semicolon (;) or comma (,) delimited CSV files up to 5 MB</p>
+          <input type="file" id="batchFileInput" class="d-none" accept=".csv">
+          <button type="button" class="btn btn-outline-teal btn-sm" onclick="document.getElementById('batchFileInput').click()">
+            <i class="bi bi-folder2-open me-1"></i> Browse Local Files
+          </button>
+        </div>
+
+        <div id="fileInfoCard" class="alert alert-secondary py-2 px-3 small d-none mb-3 d-flex justify-content-between align-items-center">
+          <div>
+            <i class="bi bi-file-earmark-check text-success me-1"></i>
+            <span id="selectedFileName" class="fw-semibold">filename.csv</span>
+            <span id="selectedFileSize" class="text-muted ms-1">(0 KB)</span>
+          </div>
+          <button type="button" class="btn-close btn-sm" onclick="clearSelectedFile()"></button>
+        </div>
+
+        <div class="d-grid gap-2">
+          <button type="button" class="btn btn-teal" id="runBatchBtn" disabled>
+            <i class="bi bi-play-circle me-1"></i> Run Batch Prediction
+          </button>
+          <button type="button" class="btn btn-navy" id="downloadEnrichedBtn" disabled>
+            <i class="bi bi-download me-1"></i> Run &amp; Download Enriched CSV
+          </button>
+        </div>
+
+        <div id="batchSpinner" class="spinner-container">
+          <div class="spinner-border text-teal" role="status"></div>
+          <span class="small fw-semibold">Processing batch records...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Instructions & Batch Rules Card -->
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-white py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-info-circle text-primary me-2"></i>Batch Processing Rules</h6>
+      </div>
+      <div class="card-body small text-muted">
+        <ul class="ps-3 mb-0">
+          <li class="mb-1">Requires all 30 early-warning feature columns.</li>
+          <li class="mb-1"><strong>Transparent validation:</strong> Rows with missing or invalid values are flagged individually rather than silently dropped.</li>
+          <li class="mb-1">Maximum batch upload limit: <strong>5,000 records</strong> per file.</li>
+          <li>Output CSV appends <code>predicted_G3</code> and <code>academic_risk_category</code>.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results Section (Col 7) -->
+  <div class="col-lg-7">
+    <!-- Initial State -->
+    <div id="batchPlaceholder" class="card shadow-sm border-0 text-center p-5 h-100 d-flex flex-column justify-content-center">
+      <div class="py-5">
+        <i class="bi bi-table text-secondary fs-1 mb-3"></i>
+        <h5 class="fw-bold text-secondary">No Batch Executed Yet</h5>
+        <p class="text-muted small px-4">
+          Select or drag-and-drop a student CSV dataset on the left to view validation diagnostics and batch inference outcomes.
+        </p>
+      </div>
+    </div>
+
+    <!-- Active Batch Outcome Card -->
+    <div id="batchResultCard" class="card shadow-sm border-0 h-100 d-none">
+      <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold"><i class="bi bi-card-checklist text-teal me-2"></i>Batch Execution Results</h5>
+        <span id="batchSummaryBadge" class="badge bg-primary"></span>
+      </div>
+      <div class="card-body p-4">
+        <!-- Summary KPI Row -->
+        <div class="row g-2 mb-3 text-center">
+          <div class="col-4">
+            <div class="p-2 border rounded bg-light">
+              <div class="small text-muted">Total Rows</div>
+              <div class="h5 mb-0 fw-bold" id="bTotal">0</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-2 border rounded bg-light">
+              <div class="small text-muted">Processed</div>
+              <div class="h5 mb-0 fw-bold text-success" id="bProcessed">0</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-2 border rounded bg-light">
+              <div class="small text-muted">Rejected</div>
+              <div class="h5 mb-0 fw-bold text-danger" id="bRejected">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scrollable Table -->
+        <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+          <table class="table table-custom table-hover small mb-0" id="batchResultsTable">
+            <thead>
+              <tr>
+                <th>Row #</th>
+                <th>Status</th>
+                <th>Predicted Grade</th>
+                <th>Risk Category</th>
+                <th>Validation Diagnostics</th>
+              </tr>
+            </thead>
+            <tbody id="batchTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card-footer bg-light d-flex justify-content-between align-items-center py-2">
+        <small class="text-muted">Rows rejected by validation indicate specific field error reasons above.</small>
+        <button type="button" class="btn btn-sm btn-teal" id="downloadDirectBtn">
+          <i class="bi bi-download me-1"></i> Export Results CSV
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentFile = null;
+
+function downloadSampleTemplate() {
+  const headers = [
+    "school","sex","age","address","famsize","Pstatus","Medu","Fedu","Mjob","Fjob",
+    "reason","guardian","traveltime","studytime","failures","schoolsup","famsup","paid",
+    "activities","nursery","higher","internet","romantic","famrel","freetime","goout",
+    "Dalc","Walc","health","absences"
+  ];
+  const sample1 = [
+    "GP","F","17","U","GT3","T","3","3","services","other","course","mother","1","3","0","no","yes","no","yes","yes","yes","yes","no","4","3","2","1","1","5","2"
+  ];
+  const sample2 = [
+    "GP","M","18","R","LE3","A","1","1","at_home","other","home","father","2","1","2","no","no","no","no","no","no","no","yes","3","4","4","2","3","3","16"
+  ];
+  const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), sample1.join(","), sample2.join(",")].join("\n");
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", "student_batch_template.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function clearSelectedFile() {
+  currentFile = null;
+  document.getElementById("batchFileInput").value = "";
+  document.getElementById("fileInfoCard").classList.add("d-none");
+  document.getElementById("runBatchBtn").disabled = true;
+  document.getElementById("downloadEnrichedBtn").disabled = true;
+}
+
+function handleFileSelect(file) {
+  if (!file) return;
+  if (!file.name.toLowerCase().endsWith(".csv")) {
+    showToast("Please select a .csv file.", "warning");
+    return;
+  }
+  currentFile = file;
+  document.getElementById("selectedFileName").innerText = file.name;
+  document.getElementById("selectedFileSize").innerText = `(${(file.size / 1024).toFixed(1)} KB)`;
+  document.getElementById("fileInfoCard").classList.remove("d-none");
+  document.getElementById("runBatchBtn").disabled = false;
+  document.getElementById("downloadEnrichedBtn").disabled = false;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const dropZone = document.getElementById("dropZone");
+  const fileInput = document.getElementById("batchFileInput");
+  const runBtn = document.getElementById("runBatchBtn");
+  const downloadEnrichedBtn = document.getElementById("downloadEnrichedBtn");
+  const downloadDirectBtn = document.getElementById("downloadDirectBtn");
+  const spinner = document.getElementById("batchSpinner");
+  const placeholder = document.getElementById("batchPlaceholder");
+  const resultCard = document.getElementById("batchResultCard");
+
+  // Drag and drop event listeners
+  ["dragenter", "dragover"].forEach(eventName => {
+    dropZone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      dropZone.classList.add("dragover");
+    });
+  });
+
+  ["dragleave", "drop"].forEach(eventName => {
+    dropZone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("dragover");
+    });
+  });
+
+  dropZone.addEventListener("drop", (e) => {
+    const dt = e.dataTransfer;
+    if (dt && dt.files.length > 0) {
+      handleFileSelect(dt.files[0]);
+    }
+  });
+
+  fileInput.addEventListener("change", (e) => {
+    if (e.target.files.length > 0) {
+      handleFileSelect(e.target.files[0]);
+    }
+  });
+
+  // Run Batch (Table Preview)
+  runBtn.addEventListener("click", async () => {
+    if (!currentFile) return;
+
+    spinner.style.display = "flex";
+    placeholder.classList.add("d-none");
+    resultCard.classList.add("d-none");
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text = event.target.result;
+        // Parse CSV to JSON rows
+        const lines = text.split(/\r\n|\n/).filter(l => l.trim().length > 0);
+        if (lines.length < 2) {
+          spinner.style.display = "none";
+          placeholder.classList.remove("d-none");
+          showToast("CSV file contains no data rows.", "danger");
+          return;
+        }
+
+        const delimiter = lines[0].includes(";") ? ";" : ",";
+        const headers = lines[0].split(delimiter).map(h => h.trim().replace(/^["']|["']$/g, ""));
+
+        const students = [];
+        for (let i = 1; i < lines.length; i++) {
+          const vals = lines[i].split(delimiter).map(v => v.trim().replace(/^["']|["']$/g, ""));
+          if (vals.length === headers.length) {
+            const obj = {};
+            headers.forEach((h, idx) => {
+              const numFields = ["age", "Medu", "Fedu", "traveltime", "studytime", "failures", "famrel", "freetime", "goout", "Dalc", "Walc", "health", "absences"];
+              obj[h] = numFields.includes(h) ? parseInt(vals[idx], 10) : vals[idx];
+            });
+            students.push(obj);
+          }
+        }
+
+        const res = await fetch("/api/predict/batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ students })
+        });
+
+        const data = await res.json();
+        spinner.style.display = "none";
+
+        if (!res.ok) {
+          placeholder.classList.remove("d-none");
+          showToast(data.detail || "Batch execution failed.", "danger");
+          return;
+        }
+
+        resultCard.classList.remove("d-none");
+        document.getElementById("bTotal").innerText = data.summary.total_records;
+        document.getElementById("bProcessed").innerText = data.summary.processed_successfully;
+        document.getElementById("bRejected").innerText = data.summary.failed_validation;
+        document.getElementById("batchSummaryBadge").innerText = `Avg Grade: ${data.summary.average_predicted_score} / 20`;
+
+        const tbody = document.getElementById("batchTableBody");
+        tbody.innerHTML = data.results.map(r => `
+          <tr class="${r.status === 'rejected' ? 'table-danger' : ''}">
+            <td><strong>#${r.row_index}</strong></td>
+            <td>
+              <span class="badge ${r.status === 'success' ? 'bg-success' : 'bg-danger'}">
+                ${r.status.toUpperCase()}
+              </span>
+            </td>
+            <td class="fw-bold">${r.predicted_score !== null ? r.predicted_score.toFixed(2) : '-'}</td>
+            <td>${getRiskBadgeHtml(r.risk_category)}</td>
+            <td class="small text-danger">${r.errors.length > 0 ? r.errors.join('; ') : '<span class="text-muted">None</span>'}</td>
+          </tr>
+        `).join("");
+
+        showToast("Batch processing finished!", "success");
+
+      } catch (err) {
+        spinner.style.display = "none";
+        placeholder.classList.remove("d-none");
+        showToast("Error processing batch: " + err.message, "danger");
+      }
+    };
+    reader.readAsText(currentFile);
+  });
+
+  // Download Enriched CSV
+  async function downloadEnriched() {
+    if (!currentFile) return;
+    const formData = new FormData();
+    formData.append("file", currentFile);
+
+    spinner.style.display = "flex";
+    try {
+      const res = await fetch("/api/dataset/predict", {
+        method: "POST",
+        body: formData
+      });
+      spinner.style.display = "none";
+
+      if (!res.ok) {
+        const err = await res.json();
+        showToast(err.detail || "Download failed.", "danger");
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `enriched_predictions_${currentFile.name}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showToast("Enriched CSV downloaded successfully!", "success");
+    } catch (err) {
+      spinner.style.display = "none";
+      showToast("Download error: " + err.message, "danger");
+    }
+  }
+
+  downloadEnrichedBtn.addEventListener("click", downloadEnriched);
+  downloadDirectBtn.addEventListener("click", downloadEnriched);
+});
+</script>
+{% endblock %}

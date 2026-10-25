@@ -1,0 +1,485 @@
+{% extends "base.html" %}
+
+{% block title %}Predict Student Performance | Early-Warning ML Studio{% endblock %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+  <div class="col-md-8">
+    <h2 class="mb-1">Student Performance & Risk Estimator</h2>
+    <p class="text-muted mb-0">
+      Enter student profile attributes to estimate final academic performance (G3, 0-20 scale) and identify early risk tiers.
+    </p>
+  </div>
+  <div class="col-md-4 text-md-end mt-3 mt-md-0">
+    <div class="btn-group shadow-sm">
+      <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="bi bi-lightning-charge-fill text-warning me-1"></i> Load Demo Profiles
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><button class="dropdown-item" type="button" onclick="loadPreset('high_risk')"><i class="bi bi-exclamation-triangle text-danger me-2"></i>At-Risk Student Profile</button></li>
+        <li><button class="dropdown-item" type="button" onclick="loadPreset('moderate_risk')"><i class="bi bi-shield-exclamation text-warning me-2"></i>Average / Moderate Student Profile</button></li>
+        <li><button class="dropdown-item" type="button" onclick="loadPreset('low_risk')"><i class="bi bi-star-fill text-success me-2"></i>High-Achiever Student Profile</button></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Prediction Input Form (Col 8) -->
+  <div class="col-lg-8">
+    <form id="predictionForm" class="card shadow-sm border-0">
+      <div class="card-header bg-white py-3 border-bottom">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="fw-bold"><i class="bi bi-sliders text-teal me-2"></i>Student Profile Attributes (30 Indicators)</span>
+          <span class="badge bg-light text-muted border">Excludes G1 &amp; G2</span>
+        </div>
+      </div>
+      <div class="card-body p-4">
+
+        <!-- Section 1: Demographics & Family -->
+        <h6 class="text-uppercase text-secondary fw-bold small mb-3 border-bottom pb-1">
+          <i class="bi bi-person-badge text-primary me-1"></i> 1. Demographics &amp; Family Background
+        </h6>
+        <div class="row g-3 mb-4">
+          <div class="col-md-3">
+            <label class="form-label">School</label>
+            <select name="school" class="form-select" required>
+              <option value="GP" selected>Gabriel Pereira (GP)</option>
+              <option value="MS">Mousinho da Silveira (MS)</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Sex</label>
+            <select name="sex" class="form-select" required>
+              <option value="F" selected>Female (F)</option>
+              <option value="M">Male (M)</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Age (15 - 22)</label>
+            <input type="number" name="age" class="form-control" min="15" max="22" value="17" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Home Address</label>
+            <select name="address" class="form-select" required>
+              <option value="U" selected>Urban (U)</option>
+              <option value="R">Rural (R)</option>
+            </select>
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Family Size</label>
+            <select name="famsize" class="form-select" required>
+              <option value="GT3" selected>&gt; 3 Members (GT3)</option>
+              <option value="LE3">&le; 3 Members (LE3)</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Parent Status</label>
+            <select name="Pstatus" class="form-select" required>
+              <option value="T" selected>Living Together (T)</option>
+              <option value="A">Apart (A)</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Mother's Edu</label>
+            <select name="Medu" class="form-select" required>
+              <option value="0">0 - None</option>
+              <option value="1">1 - 4th Grade</option>
+              <option value="2">2 - 5th-9th Grade</option>
+              <option value="3" selected>3 - Secondary</option>
+              <option value="4">4 - Higher Education</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Father's Edu</label>
+            <select name="Fedu" class="form-select" required>
+              <option value="0">0 - None</option>
+              <option value="1">1 - 4th Grade</option>
+              <option value="2">2 - 5th-9th Grade</option>
+              <option value="3" selected>3 - Secondary</option>
+              <option value="4">4 - Higher Education</option>
+            </select>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Mother's Job</label>
+            <select name="Mjob" class="form-select" required>
+              <option value="services" selected>Civil / Services</option>
+              <option value="teacher">Teacher</option>
+              <option value="health">Healthcare</option>
+              <option value="at_home">At Home</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Father's Job</label>
+            <select name="Fjob" class="form-select" required>
+              <option value="other" selected>Other</option>
+              <option value="services">Civil / Services</option>
+              <option value="teacher">Teacher</option>
+              <option value="health">Healthcare</option>
+              <option value="at_home">At Home</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">School Reason</label>
+            <select name="reason" class="form-select" required>
+              <option value="course" selected>Course Preference</option>
+              <option value="reputation">School Reputation</option>
+              <option value="home">Close to Home</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Section 2: Academic & Educational Support -->
+        <h6 class="text-uppercase text-secondary fw-bold small mb-3 border-bottom pb-1">
+          <i class="bi bi-book-half text-teal me-1"></i> 2. Academic Support &amp; Study Habits
+        </h6>
+        <div class="row g-3 mb-4">
+          <div class="col-md-3">
+            <label class="form-label">Legal Guardian</label>
+            <select name="guardian" class="form-select" required>
+              <option value="mother" selected>Mother</option>
+              <option value="father">Father</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Travel Time</label>
+            <select name="traveltime" class="form-select" required>
+              <option value="1" selected>1 - &lt; 15 mins</option>
+              <option value="2">2 - 15 to 30 mins</option>
+              <option value="3">3 - 30 to 60 mins</option>
+              <option value="4">4 - &gt; 1 hour</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Weekly Study Time</label>
+            <select name="studytime" class="form-select" required>
+              <option value="1">1 - &lt; 2 hours</option>
+              <option value="2" selected>2 - 2 to 5 hours</option>
+              <option value="3">3 - 5 to 10 hours</option>
+              <option value="4">4 - &gt; 10 hours</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Past Failures</label>
+            <select name="failures" class="form-select" required>
+              <option value="0" selected>0 failures</option>
+              <option value="1">1 failure</option>
+              <option value="2">2 failures</option>
+              <option value="3">3 failures</option>
+              <option value="4">4 or more</option>
+            </select>
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">School Support</label>
+            <select name="schoolsup" class="form-select" required>
+              <option value="no" selected>No</option>
+              <option value="yes">Yes</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Family Support</label>
+            <select name="famsup" class="form-select" required>
+              <option value="yes" selected>Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Paid Math Classes</label>
+            <select name="paid" class="form-select" required>
+              <option value="no" selected>No</option>
+              <option value="yes">Yes</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Extra Activities</label>
+            <select name="activities" class="form-select" required>
+              <option value="yes" selected>Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Section 3: Lifestyle, Health & Absences -->
+        <h6 class="text-uppercase text-secondary fw-bold small mb-3 border-bottom pb-1">
+          <i class="bi bi-heart-pulse text-danger me-1"></i> 3. Lifestyle, Well-Being &amp; Attendance
+        </h6>
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label">Nursery School</label>
+            <select name="nursery" class="form-select" required>
+              <option value="yes" selected>Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Higher Education</label>
+            <select name="higher" class="form-select" required>
+              <option value="yes" selected>Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Home Internet</label>
+            <select name="internet" class="form-select" required>
+              <option value="yes" selected>Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Romantic Relation</label>
+            <select name="romantic" class="form-select" required>
+              <option value="no" selected>No</option>
+              <option value="yes">Yes</option>
+            </select>
+          </div>
+
+          <div class="col-md-2">
+            <label class="form-label">Family Rel (1-5)</label>
+            <input type="number" name="famrel" class="form-control" min="1" max="5" value="4" required>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Free Time (1-5)</label>
+            <input type="number" name="freetime" class="form-control" min="1" max="5" value="3" required>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Going Out (1-5)</label>
+            <input type="number" name="goout" class="form-control" min="1" max="5" value="2" required>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Workday Alc</label>
+            <input type="number" name="Dalc" class="form-control" min="1" max="5" value="1" required>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Weekend Alc</label>
+            <input type="number" name="Walc" class="form-control" min="1" max="5" value="1" required>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Health (1-5)</label>
+            <input type="number" name="health" class="form-control" min="1" max="5" value="5" required>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label fw-bold text-danger">Absences (0 to 93)</label>
+            <input type="number" name="absences" class="form-control" min="0" max="93" value="4" required>
+          </div>
+        </div>
+
+      </div>
+      <div class="card-footer bg-light p-3 d-flex justify-content-between align-items-center">
+        <span class="text-muted small">All 30 early-warning indicators validated on client and server.</span>
+        <button type="submit" class="btn btn-teal px-4" id="submitPredictBtn">
+          <i class="bi bi-cpu me-1"></i> Predict Academic Performance
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Prediction Result Card (Col 4) -->
+  <div class="col-lg-4">
+    <!-- Initial Placeholder State -->
+    <div id="resultPlaceholder" class="card shadow-sm border-0 text-center p-4 h-100 d-flex flex-column justify-content-center">
+      <div class="py-5">
+        <i class="bi bi-graph-up-arrow text-secondary fs-1 mb-3"></i>
+        <h5 class="fw-bold text-secondary">Awaiting Input</h5>
+        <p class="text-muted small px-3">
+          Configure the student profile attributes on the left and click <strong>Predict Academic Performance</strong> or load one of the demo presets above.
+        </p>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="resultLoading" class="card shadow-sm border-0 text-center p-5 h-100 d-none d-flex flex-column justify-content-center">
+      <div class="spinner-border text-teal mx-auto mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+      <h6 class="fw-bold">Running Pipeline Inference...</h6>
+      <span class="text-muted small">Passing features through ColumnTransformer and trained ML Regressor &amp; Classifier</span>
+    </div>
+
+    <!-- Active Result Card -->
+    <div id="resultCard" class="card shadow-sm border-0 h-100 d-none">
+      <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold"><i class="bi bi-award text-teal me-2"></i>Inference Outcome</h5>
+        <span id="riskBadgeContainer"></span>
+      </div>
+      <div class="card-body p-4">
+        <!-- Predicted Score Display -->
+        <div class="text-center p-3 rounded mb-3 bg-light border">
+          <div class="text-muted small fw-semibold text-uppercase">Estimated Final Grade (G3)</div>
+          <div class="display-4 fw-bold text-primary my-1" id="resScore">0.00</div>
+          <div class="text-muted small">Scale: 0 to 20 &bull; Passing Threshold: &ge; 10.0</div>
+
+          <!-- Progress Bar Gauge -->
+          <div class="progress mt-3" style="height: 10px;">
+            <div id="scoreProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Class Probabilities Breakdown -->
+        <div id="probabilitiesSection" class="mb-3 d-none">
+          <h6 class="fw-bold small text-muted text-uppercase mb-2">Academic Risk Probabilities</h6>
+          <div id="probaBars" class="small"></div>
+        </div>
+
+        <!-- Pedagogical Recommendations -->
+        <div class="mb-3">
+          <h6 class="fw-bold small text-muted text-uppercase mb-2">Recommended Interventions</h6>
+          <ul id="recommendationsList" class="small ps-3 mb-0 text-secondary"></ul>
+        </div>
+
+        <!-- Disclaimer -->
+        <div class="alert alert-light border small text-muted mb-0 py-2">
+          <i class="bi bi-shield-exclamation text-warning me-1"></i>
+          <span id="resDisclaimer"></span>
+        </div>
+      </div>
+      <div class="card-footer bg-white border-top text-center py-2">
+        <small class="text-muted">Prediction automatically recorded in local SQLite audit log.</small>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Presets for quick demonstration
+const PRESETS = {
+  high_risk: {
+    school: "GP", sex: "M", age: 19, address: "R", famsize: "GT3", Pstatus: "A",
+    Medu: 1, Fedu: 1, Mjob: "at_home", Fjob: "other", reason: "other", guardian: "other",
+    traveltime: 3, studytime: 1, failures: 3, schoolsup: "no", famsup: "no", paid: "no",
+    activities: "no", nursery: "no", higher: "no", internet: "no", romantic: "yes",
+    famrel: 2, freetime: 5, goout: 5, Dalc: 3, Walc: 4, health: 3, absences: 26
+  },
+  moderate_risk: {
+    school: "GP", sex: "F", age: 17, address: "U", famsize: "GT3", Pstatus: "T",
+    Medu: 2, Fedu: 2, Mjob: "services", Fjob: "services", reason: "course", guardian: "mother",
+    traveltime: 2, studytime: 2, failures: 1, schoolsup: "no", famsup: "yes", paid: "no",
+    activities: "no", nursery: "yes", higher: "yes", internet: "yes", romantic: "no",
+    famrel: 4, freetime: 3, goout: 3, Dalc: 1, Walc: 2, health: 4, absences: 8
+  },
+  low_risk: {
+    school: "GP", sex: "F", age: 16, address: "U", famsize: "LE3", Pstatus: "T",
+    Medu: 4, Fedu: 4, Mjob: "teacher", Fjob: "health", reason: "reputation", guardian: "mother",
+    traveltime: 1, studytime: 4, failures: 0, schoolsup: "no", famsup: "yes", paid: "yes",
+    activities: "yes", nursery: "yes", higher: "yes", internet: "yes", romantic: "no",
+    famrel: 5, freetime: 2, goout: 2, Dalc: 1, Walc: 1, health: 5, absences: 0
+  }
+};
+
+function loadPreset(key) {
+  const data = PRESETS[key];
+  if (!data) return;
+  const form = document.getElementById("predictionForm");
+  for (const [name, val] of Object.entries(data)) {
+    const el = form.elements[name];
+    if (el) el.value = val;
+  }
+  showToast(`Loaded ${key.replace('_', ' ')} demo profile!`, "info");
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("predictionForm");
+  const placeholder = document.getElementById("resultPlaceholder");
+  const loading = document.getElementById("resultLoading");
+  const resultCard = document.getElementById("resultCard");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    placeholder.classList.add("d-none");
+    resultCard.classList.add("d-none");
+    loading.classList.remove("d-none");
+
+    const formData = new FormData(form);
+    const payload = {};
+    formData.forEach((val, key) => {
+      // Cast numeric fields
+      const numFields = ["age", "Medu", "Fedu", "traveltime", "studytime", "failures", "famrel", "freetime", "goout", "Dalc", "Walc", "health", "absences"];
+      payload[key] = numFields.includes(key) ? parseInt(val, 10) : val;
+    });
+
+    try {
+      const res = await fetch("/api/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      loading.classList.add("d-none");
+
+      if (!res.ok) {
+        placeholder.classList.remove("d-none");
+        showToast(data.detail || "Prediction request failed.", "danger");
+        return;
+      }
+
+      resultCard.classList.remove("d-none");
+
+      // Score and gauge
+      const score = data.predicted_score;
+      document.getElementById("resScore").innerText = score.toFixed(2);
+      const scoreBar = document.getElementById("scoreProgressBar");
+      const pct = Math.min(100, (score / 20) * 100);
+      scoreBar.style.width = pct + "%";
+
+      if (score < 10) {
+        scoreBar.className = "progress-bar bg-danger";
+      } else if (score < 14) {
+        scoreBar.className = "progress-bar bg-warning";
+      } else {
+        scoreBar.className = "progress-bar bg-success";
+      }
+
+      // Risk badge
+      document.getElementById("riskBadgeContainer").innerHTML = getRiskBadgeHtml(data.risk_category);
+
+      // Probabilities
+      const probaSection = document.getElementById("probabilitiesSection");
+      const probaBars = document.getElementById("probaBars");
+      if (data.risk_probabilities && Object.keys(data.risk_probabilities).length > 0) {
+        probaSection.classList.remove("d-none");
+        let barsHtml = "";
+        for (const [cls, prob] of Object.entries(data.risk_probabilities)) {
+          const pPct = (prob * 100).toFixed(1);
+          barsHtml += `
+            <div class="mb-1">
+              <div class="d-flex justify-content-between">
+                <span>${cls}</span>
+                <span class="fw-bold">${pPct}%</span>
+              </div>
+              <div class="progress" style="height: 6px;">
+                <div class="progress-bar ${cls.includes('High') ? 'bg-danger' : (cls.includes('Moderate') ? 'bg-warning' : 'bg-success')}" style="width: ${pPct}%;"></div>
+              </div>
+            </div>
+          `;
+        }
+        probaBars.innerHTML = barsHtml;
+      } else {
+        probaSection.classList.add("d-none");
+      }
+
+      // Recommendations
+      const recoList = document.getElementById("recommendationsList");
+      recoList.innerHTML = (data.recommendations || []).map(r => `<li class="mb-1">${r}</li>`).join("");
+
+      // Disclaimer
+      document.getElementById("resDisclaimer").innerText = data.disclaimer || "";
+
+      showToast("Prediction generated and logged successfully!", "success");
+
+    } catch (err) {
+      loading.classList.add("d-none");
+      placeholder.classList.remove("d-none");
+      showToast("Network error: " + err.message, "danger");
+    }
+  });
+});
+</script>
+{% endblock %}
